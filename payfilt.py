@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""payfilt - A commandline tool to filter and analyze payment data from .TAB files."""
+"""payfilt - A commandline tool to filter and analyze payment data from .TAB files.
+
+
+
+./payfilt.py ../dagboek/bank/Joost-Prive-TXT261026081154.TAB --merchant 'Public Food' --wlist
+
+"""
 
 import argparse
 import csv
@@ -36,6 +42,19 @@ def parse_tab_file(filepath):
                     date_time = datetime.strptime(date_str, "%Y%m%d")
             except ValueError:
                 date_time = None
+
+            # For Betaalpas transactions, extract time from NR: field
+            # Example: "NR:CT950714, 01.09.25/20:51" -> extract "20:51"
+            if 'Betaalpas' in description:
+                nr_match = re.search(r'NR:\w*,\s*(\d{2}\.\d{2}\.\d{2})/(\d{2}:\d{2})', description)
+                if nr_match:
+                    # Parse the date and time from NR field
+                    nr_date = datetime.strptime(nr_match.group(1), "%d.%m.%y")
+                    time_str = nr_match.group(2)
+                    # Combine with the main date (use NR date if it matches, otherwise use main date)
+                    if date_time:
+                        # Replace time in date_time with the extracted time
+                        date_time = datetime.combine(date_time.date(), datetime.strptime(time_str, "%H:%M").time())
 
             # Parse amount (format: -123.45 or 123,45)
             try:
@@ -220,14 +239,14 @@ def main():
 
     # Handle output based on options
     if args.list:
-        print(f"{'Date_time':<15} {'Town':<12} {'name':<20} {'amount':>10}")
+        print(f"{'Date_time':<18} {'Town':<12} {'name':<20} {'amount':>10}")
         print("-" * 60)
         for p in payments:
             date = format_date(p)
             town = p['town']
             merchant = p['merchant']
             amount = f"{p['amount']:.2f}"
-            print(f"{date:<15} {town:<12} {merchant:<20} {amount:>10}")
+            print(f"{date:<18} {town:<12} {merchant:<20} {amount:>10}")
 
     elif args.wlist:
         print(f"{'Date_time':<25} {'Town':<12} {'name':<20} {'amount':>10}")
@@ -256,6 +275,7 @@ def main():
                 week_days[week_key].add(p['date'].strftime("%Y%m%d"))
         for week, days in sorted(week_days.items()):
             print(f"{week}, {len(days)}")
+
     else:
         print(f"Found {len(payments)} payment(s)")
         print(f"{'Date':<12} {'Merchant':<25} {'Town':<12} {'Amount':>10}")
