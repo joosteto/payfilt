@@ -144,6 +144,20 @@ def format_date(payment):
             return payment['date'].strftime("%Y%m%d")
     return payment['date_str']
 
+def format_date_wlist(payment):
+    """Format date with weeknumber and weekday for --wlist option.
+    Format: YYYYMMDD(WW.D) or YYYYMMDD(WW.D)_HH:MM
+    where WW = ISO week number, D = ISO weekday (1=Monday, 7=Sunday)
+    """
+    if payment['date']:
+        year, week, weekday = payment['date'].isocalendar()
+        base_date = payment['date'].strftime("%Y%m%d")
+        if payment['date'].hour > 0 or payment['date'].minute > 0:
+            return f"{base_date}({week}.{weekday})_{payment['date'].strftime('%H:%M')}"
+        else:
+            return f"{base_date}({week}.{weekday})"
+    return payment['date_str']
+
 def main():
     parser = argparse.ArgumentParser(
         description='Filter and analyze payment data from .TAB files'
@@ -164,6 +178,11 @@ def main():
         '--list',
         action='store_true',
         help='Show payments in list format'
+    )
+    parser.add_argument(
+        '--wlist',
+        action='store_true',
+        help='Show payments in list format with weeknumber and weekday'
     )
     parser.add_argument(
         '--daylist',
@@ -210,6 +229,16 @@ def main():
             amount = f"{p['amount']:.2f}"
             print(f"{date:<15} {town:<12} {merchant:<20} {amount:>10}")
 
+    elif args.wlist:
+        print(f"{'Date_time':<25} {'Town':<12} {'name':<20} {'amount':>10}")
+        print("-" * 65)
+        for p in payments:
+            date = format_date_wlist(p)
+            town = p['town']
+            merchant = p['merchant']
+            amount = f"{p['amount']:.2f}"
+            print(f"{date:<25} {town:<12} {merchant:<20} {amount:>10}")
+
     elif args.daylist:
         days = set()
         for p in payments:
@@ -219,15 +248,14 @@ def main():
             print(day)
 
     elif args.weekdaycount:
-        week_counts = defaultdict(int)
+        week_days = defaultdict(set)
         for p in payments:
             if p['date']:
                 year, week, _ = p['date'].isocalendar()
                 week_key = f"{year}.{week:02d}"
-                week_counts[week_key] += 1
-        for week, count in sorted(week_counts.items()):
-            print(f"{week}, {count}")
-
+                week_days[week_key].add(p['date'].strftime("%Y%m%d"))
+        for week, days in sorted(week_days.items()):
+            print(f"{week}, {len(days)}")
     else:
         print(f"Found {len(payments)} payment(s)")
         print(f"{'Date':<12} {'Merchant':<25} {'Town':<12} {'Amount':>10}")
