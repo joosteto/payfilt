@@ -12,6 +12,7 @@ only show results for merchants that match "Public Food" or "Albert Heijn".
 
 show payments in following format (so if no 'Naam: ...' is given, use the information in the field that contains 'Albert Heijn / Public Food in the example .TAB file')
 
+Output:
 ```
 Date_time      Town      name                amount
 20231201       Zaandam   hollandsnieuwe      11.00
